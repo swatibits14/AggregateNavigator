@@ -1,0 +1,140 @@
+1 dimproduct 
+2 dimtime
+3 dimstore
+1 dimcategory
+2 dimregion
+3 dimmonth
+a facttablesales
+b sales_agg_category
+c sales_agg_region
+d sales_agg_month
+e sales_agg_category_month
+f sales_agg_region_month
+g sales_agg_category_region
+h sales_agg_category_region_month
+
+
+import java.util.regex.Pattern; 
+import java.util.regex.Matcher;
+
+public class QueryInterceptor {
+
+	static String Query;
+	static String RegExFieldNames ="SELECT(.*)FROM(.*)";
+	String QueryTables[];
+	String QueryFields[];
+	String QueryFactTable;
+	String QueryDimensionTables[];
+	String QueryTableAlias[];
+	
+	public void setQuery(String userQuery)
+	{
+		Query = userQuery;
+	}
+	
+	public String getQuery()
+	{
+		return Query;
+	}
+	
+	public String[] getQueryTables()
+	{
+		return QueryTables;
+	}
+	
+	public String[] getQueryFields()
+	{
+		return QueryFields;
+	}
+	
+	public String[] getQueryDimensionTables()
+	{
+		return QueryDimensionTables;
+	}
+	
+	public String[] getQueryTableAlias()
+	{
+		return QueryTableAlias;
+	}
+	
+	public String getQueryFactTable()
+	{
+		return QueryFactTable;
+	}
+	
+	
+	public void Intercept()
+	{
+		String interceptedQuery=Query;
+	    Pattern p = Pattern.compile(RegExFieldNames);
+		Matcher m = p.matcher(interceptedQuery);
+		String fieldList="",tableList="";
+		if (m.find())
+		{
+		   fieldList=m.group(1);
+		   tableList=m.group(2);
+		}
+		System.out.println("The Field List in given SQL query is :" +fieldList);
+		System.out.println("The Table List in given SQL query is :"+ tableList);
+		
+		
+		String[]allFields=fieldList.split(",");
+		String[]allTables=tableList.split(",");
+		String factTable="";
+		String dimTables="";
+		int numTables=allTables.length;
+		//System.out.println(numTables);
+		 QueryTableAlias=new String[numTables];
+		
+		p=Pattern.compile(".*([a-zA-Z]).*");
+		
+		int count=0;
+		
+		for(int i=0;i<numTables;i++)
+		{
+			if(allTables[i].contains("sales_fact"))
+			{
+				QueryFactTable="sales_fact";
+				
+			}
+			
+			else
+			{
+				 dimTables+=allTables[i]+",";
+			}
+			
+			
+			m=p.matcher(allTables[i]);
+			
+			if(m.find())
+			{   
+				
+				QueryTableAlias[count]=m.group(1);
+				count++;
+			}
+			
+			
+	 }//for ends
+		
+		System.out.println(dimTables);
+		for(String al:QueryTableAlias)
+		{
+		System.out.println(al);
+		}
+		
+		QueryTables=new String[numTables];
+		System.arraycopy(allTables,0,QueryTables,0,numTables);
+		
+		QueryFields=new String[numTables];
+		System.arraycopy(allFields,0,QueryFields,0,allFields.length);
+	
+		QueryDimensionTables=dimTables.split(",");	
+	}//QueryIntercept method ends
+	
+	public static void main(String []args)
+	{
+		QueryInterceptor QI = new QueryInterceptor();
+		QI.setQuery("SELECT dollar_sales,unit_sales FROM sales_fact f,product p,time t,store s");
+		QI.Intercept();
+	}
+}
